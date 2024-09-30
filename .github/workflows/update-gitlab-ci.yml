@@ -1,0 +1,40 @@
+name: Update CI Versions
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  update-versions:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Docker Compose
+      run: |
+        docker-compose -f .devcontainer/docker-compose.yml build
+        docker-compose -f .devcontainer/docker-compose.yml up -d
+
+    - name: Get Versions from Dev Container
+      run: |
+        CONTAINER_INFO=$(docker-compose -f .devcontainer/docker-compose.yml exec -T app sh -c "mvn --version && node --version")
+        MAVEN_VERSION=$(echo "$CONTAINER_INFO" | grep 'Apache Maven' | cut -d ' ' -f 3)
+        NODE_VERSION=$(echo "$CONTAINER_INFO" | grep '^v' | cut -d 'v' -f 2)
+        echo "MAVEN_VERSION=$MAVEN_VERSION" >> $GITHUB_ENV
+        echo "NODE_VERSION=$NODE_VERSION" >> $GITHUB_ENV
+
+    - name: Update GitLab CI Configuration
+      run: |
+        sed -i "s/MAVEN_VERSION: \".*\"/MAVEN_VERSION: \"${{ env.MAVEN_VERSION }}\"/" .gitlab-ci.yml
+        sed -i "s/NODE_VERSION: \".*\"/NODE_VERSION: \"${{ env.NODE_VERSION }}\"/" .gitlab-ci.yml
+
+    - name: Commit and Push if Changed
+      run: |
+        git config --global user.name 'GitHub Action'
+        git config --global user.email 'action@github.com'
+        git add .gitlab-ci.yml
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Update Maven version to ${{ env.MAVEN_VERSION }} and Node.js version to ${{ env.NODE_VERSION }} in GitLab CI" && git push)
+
+    - name: Tear down Docker Compose
+      run: docker-compose -f .devcontainer/docker-compose.yml down

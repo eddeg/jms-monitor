@@ -1,0 +1,91 @@
+variables:
+  MAVEN_VERSION: "3.9.9"    # This will be automatically updated by the GitHub Action
+  NODE_VERSION: "22.9.0"    # This will be automatically updated by the GitHub Action
+  # Headless mode with WARN log level and timestamps
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN -Dorg.slf4j.simpleLogger.showDateTime=true -Djava.awt.headless=true"
+  # Non-interactive mode running all tests before failing the build and showing only errors.
+  MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version -DinstallAtEnd=true -DdeployAtEnd=true"
+
+cache:
+  paths:
+    - .m2/repository
+    - frontend/node_modules/
+
+stages:
+  - scan
+  - lint
+  - build
+  - test
+#  - deploy
+
+security-scan:              # Finds and automatically fixes vulnerabilities in open-source dependencies
+  stage: scan
+  script:
+    - npm install -g snyk
+    - snyk test
+
+lint-backend:
+  stage: lint
+  image: maven:${MAVEN_VERSION}-alpine
+  script:
+    - mvn checkstyle:check
+
+lint-frontend:
+  stage: lint
+  image: node:${NODE_VERSION}
+  script:
+    - cd frontend
+    - npm ci
+    - npm run lint
+
+build-backend:
+  stage: build
+  image: maven:${MAVEN_VERSION}-alpine
+  script:
+    - mvn $MAVEN_CLI_OPTS clean package -DskipTests
+  artifacts:
+    paths:
+      - target/*.jar
+    expire_in: 1 week
+
+build-frontend:
+  stage: build
+  image: node:${NODE_VERSION}
+  script:
+    - cd frontend
+    - npm ci
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/dist
+    expire_in: 1 week
+
+test-backend:
+  stage: test
+  image: maven:${MAVEN_VERSION}-alpine
+  script:
+    - mvn $MAVEN_CLI_OPTS test
+  artifacts:
+    reports:
+      junit: target/surefire-reports/TEST-*.xml
+
+test-frontend:
+  stage: test
+  image: node:${NODE_VERSION}
+  script:
+    - cd frontend
+    - npm ci
+    - npm run test
+  artifacts:
+    reports:
+      junit: frontend/junit.xml
+
+deploy:
+  stage: deploy             # Set SERVER_USER, SERVER_ADDRESS, DEPLOY_PATH, and CONFIG_SERVER_URI as GitLab CI/CD variables
+  script:
+    - echo "Deploying application..."
+    - scp target/*.jar $SERVER_USER@$SERVER_ADDRESS:$DEPLOY_PATH/
+    - scp -r frontend/dist $SERVER_USER@$SERVER_ADDRESS:$DEPLOY_PATH/frontend
+    - ssh $SERVER_USER@$SERVER_ADDRESS "java -jar -Dspring.profiles.active=prod -Dspring.cloud.config.uri=$CONFIG_SERVER_URI $DEPLOY_PATH/*.jar"
+  only:
+    - main

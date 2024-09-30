@@ -1,0 +1,52 @@
+{
+    "name": "JMS Monitor Dev Container", 
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "app",
+    "workspaceFolder": "/workspace",
+    "remoteEnv": {
+        "COMPOSE_PROFILES": "dev"
+    },
+
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "java.configuration.updateBuildConfiguration": "automatic",
+                "java.jdt.ls.java.home": "${env:JAVA_HOME}",
+                "sonarlint.rules": {
+                    "docker:S7026": {
+                        "level": "off"
+                    }
+                }
+            },
+            "extensions": [
+                "vscjava.vscode-java-pack",
+                "vmware.vscode-boot-dev-pack",
+                "vscjava.vscode-lombok",
+                "vue.volar",
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode",
+                "ms-azuretools.vscode-docker",
+                "redhat.vscode-yaml",
+                "mongodb.mongodb-vscode",
+                "humao.rest-client",
+                "eamodio.gitlens",
+                "starkwang.markdown",
+                "streetsidesoftware.code-spell-checker",
+                "arjun.swagger-viewer",
+                "dotjoshjohnson.xml",
+                "ms-vsliveshare.vsliveshare",
+                "vscjava.vscode-java-test",
+                "vscjava.vscode-java-debug",
+                "sonarsource.sonarlint-vscode",
+                "vscjava.vscode-maven",
+                "ms-vscode-remote.remote-containers",
+                "phplasma.csv-to-table"
+            ],
+            "unwantedExtensions": [
+                "vscjava.vscode-gradle"
+            ]
+        }
+    },
+
+    "forwardPorts": [8080, 8161, 27017, 61616]
+}

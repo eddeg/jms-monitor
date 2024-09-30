@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "Dockerfile*": "dockerfile"
+    },
+    "docker.dockerfilePatterns": [
+        "**/Dockerfile*"
+    ]
+}

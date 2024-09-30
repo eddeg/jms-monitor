@@ -1,0 +1,30 @@
+FROM alpine:3.20
+
+# Set up environment variables
+ENV ACTIVEMQ_HOME /opt/activemq
+ENV JAVA_HOME /usr/lib/jvm/java-17-openjdk
+ENV PATH ${PATH}:${ACTIVEMQ_HOME}/bin
+ENV ACTIVEMQ_OPTS "-Djetty.host=0.0.0.0"
+
+# Install OpenJDK 17 JRE, download and install ActiveMQ, and clean up in a single layer
+RUN apk add --no-cache openjdk17-jre && \
+    ACTIVEMQ_VERSION=$(wget -qO- https://activemq.apache.org/components/classic/download/ | \
+      fgrep -m1 -A1 'Unix/Linux/Cygwin' | \
+      fgrep activemq | \
+      sed -E 's/.*filename=\/activemq\/([0-9.]+)\/.*/\1/p' | \
+      head -1) && \
+    echo "Latest ActiveMQ version: ${ACTIVEMQ_VERSION}" && \
+    wget -O activemq.tar.gz "https://archive.apache.org/dist/activemq/${ACTIVEMQ_VERSION}/apache-activemq-${ACTIVEMQ_VERSION}-bin.tar.gz" && \
+    tar -xzf activemq.tar.gz -C /opt && \
+    ln -s /opt/apache-activemq-${ACTIVEMQ_VERSION} ${ACTIVEMQ_HOME} && \
+    rm activemq.tar.gz &&  \
+    addgroup -S activemq && adduser -S -H -G activemq activemq && \
+    chown -R activemq:activemq ${ACTIVEMQ_HOME} && \
+    # Verify installations
+    echo "java:     " && java -version 2>&1 | awk -F '"' '/version/ {print $2}' && \
+    echo "activemq: " && ${ACTIVEMQ_HOME}/bin/activemq --version | grep "ActiveMQ" | cut -d " " -f 2 && \
+    # Clean up
+    rm -rf /var/cache/apk/* /tmp/*
+
+# Set the default command to run ActiveMQ
+CMD ["activemq", "console"]

@@ -1,0 +1,45 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app
+    volumes:
+      - ..:/workspace:cached
+    working_dir: /workspace
+    command: sleep infinity
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+    ports:
+      - "8080:8080"
+    profiles:
+      - dev
+      - prod
+
+  mongodb:
+    build:
+      context: .
+      dockerfile: Dockerfile.mongodb_
+    container_name: mongodb
+    volumes:
+      - mongodb-data:/data/db
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
+    profiles:
+      - dev
+
+  activemq:
+    build:
+      context: .
+      dockerfile: Dockerfile.activemq
+    container_name: activemq
+    ports:
+      - "61616:61616"  # JMS
+      - "8161:8161"    # Web Console
+    restart: unless-stopped
+    profiles:
+      - dev
+
+volumes:
+  mongodb-data:
